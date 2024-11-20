@@ -14,6 +14,7 @@ const cameraOptions = {
 
 const display = createDisplay(layout, devices, options);
 
+let imageData;
 camera.on('frame', (frame) => {
   imageData = processFrame(frame, {
     depthThreshold: 2000,
