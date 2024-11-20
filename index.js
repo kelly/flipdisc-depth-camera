@@ -1,6 +1,6 @@
 import RealSenseCamera from 'realsense';
 import { createDisplay } from 'flipdisc';
-import { processFrame } from "./src/process";
+import { processFrame } from "./src/process.js";
 import { layout, devices, options } from './config/config.js'
 
 const camera = new RealSenseCamera();
