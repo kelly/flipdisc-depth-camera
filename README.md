@@ -35,7 +35,7 @@ npm install
 
 ```
 
-### Update config/config.js
+### Update [config/config.js](https://github.com/kelly/flipdisc-depth-camera/blob/main/config/config.js)
 
 
 ### Start
