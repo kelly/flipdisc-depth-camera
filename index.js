@@ -17,8 +17,8 @@ const display = createDisplay(layout, devices, options);
 let imageData;
 camera.on('frame', (frame) => {
   imageData = processFrame(frame, {
-    depthThreshold: 2500,
-    darknessThreshold: 100,
+    depthThreshold: 2000,
+    darknessThreshold: 25,
     outputWidth: display.width,
     outputHeight: display.height,
     isMirrored: true

@@ -23,11 +23,11 @@ function calculateCropDimensions(sourceWidth, sourceHeight, targetWidth, targetH
 
   if (sourceAspect > targetAspect) {
     // Width needs to be cropped more
-    cropHeight = Math.min(sourceHeight, sourceHeight);
+    cropHeight = sourceHeight;
     cropWidth = Math.round(cropHeight * targetAspect);
   } else {
     // Height needs to be cropped more
-    cropWidth = Math.min(sourceWidth, sourceWidth);
+    cropWidth = sourceWidth;
     cropHeight = Math.round(cropWidth / targetAspect);
   }
 
@@ -106,8 +106,8 @@ function processFrame(frame, options = {}) {
         // Check darkness threshold using luminance
         const luminance = calculateLuminance(colorData, colorIndex);
 
-        if (luminance >= config.darknessThreshold) {
-            pixelValue = 0;
+        if (luminance < config.darknessThreshold) {
+          pixelValue = 0;
         }
       }
 
@@ -119,7 +119,7 @@ function processFrame(frame, options = {}) {
     }
   }
 
-return outputBuffer;
+  return outputBuffer;
 }
 
 export { processFrame };
