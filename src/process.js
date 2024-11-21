@@ -46,6 +46,23 @@ function calculateLuminance(colorData, colorIndex) {
   );
 }
 
+function calculateColorToDepthMapping(depthFrame, colorFrame) {
+  // Calculate scaling factors between depth and color frames
+  const scaleX = colorFrame.width / depthFrame.width;
+  const scaleY = colorFrame.height / depthFrame.height;
+
+  // Calculate offsets to center the color frame relative to depth frame
+  const offsetX = (colorFrame.width - (depthFrame.width * scaleX)) / 2;
+  const offsetY = (colorFrame.height - (depthFrame.height * scaleY)) / 2;
+
+  return {
+    scaleX,
+    scaleY,
+    offsetX,
+    offsetY
+  };
+}
+
 function processFrame(frame, options = {}) {
   const config = { ...defaults, ...options };
 
@@ -57,19 +74,16 @@ function processFrame(frame, options = {}) {
     throw new Error('Both depth and color frames are required');
   }
 
+  // Calculate depth frame crop dimensions
   const depthCrop = calculateCropDimensions(
-    depthFrame.width, 
-    depthFrame.height, 
-    config.outputWidth, 
+    depthFrame.width,
+    depthFrame.height,
+    config.outputWidth,
     config.outputHeight
   );
 
-  const colorCrop = calculateCropDimensions(
-    colorFrame.width, 
-    colorFrame.height, 
-    config.outputWidth, 
-    config.outputHeight
-  );
+  // Calculate mapping between depth and color coordinates
+  const mapping = calculateColorToDepthMapping(depthFrame, colorFrame);
 
   const depthData = new Uint16Array(depthFrame.data.buffer);
   const colorData = new Uint8Array(colorFrame.data.buffer);
@@ -79,19 +93,28 @@ function processFrame(frame, options = {}) {
 
   // Process pixels
   for (let y = 0; y < config.outputHeight; y++) {
-    const sourceY = Math.floor(y * depthCrop.cropHeight / config.outputHeight) + depthCrop.startY;
-    const colorSourceY = Math.floor(y * colorCrop.cropHeight / config.outputHeight) + colorCrop.startY;
-
+    const depthSourceY = Math.floor(y * depthCrop.cropHeight / config.outputHeight) + depthCrop.startY;
     const outputRowOffset = y * config.outputWidth * 4;
 
     for (let x = 0; x < config.outputWidth; x++) {
       // Apply mirroring if enabled
       const outputX = config.isMirrored ? (config.outputWidth - 1 - x) : x;
 
-      const sourceX = Math.floor(x * depthCrop.cropWidth / config.outputWidth) + depthCrop.startX;
-      const colorSourceX = Math.floor(x * colorCrop.cropWidth / config.outputWidth) + colorCrop.startX;
+      // Calculate depth pixel position
+      const depthSourceX = Math.floor(x * depthCrop.cropWidth / config.outputWidth) + depthCrop.startX;
 
-      const depthIndex = (sourceY * depthFrame.width) + sourceX;
+      // Map depth coordinates to color coordinates
+      const colorSourceX = Math.floor((depthSourceX * mapping.scaleX) + mapping.offsetX);
+      const colorSourceY = Math.floor((depthSourceY * mapping.scaleY) + mapping.offsetY);
+
+      // Ensure color coordinates are within bounds
+      const validColorCoords = 
+        colorSourceX >= 0 && 
+        colorSourceX < colorFrame.width &&
+        colorSourceY >= 0 && 
+        colorSourceY < colorFrame.height;
+
+      const depthIndex = (depthSourceY * depthFrame.width) + depthSourceX;
       const colorIndex = (colorSourceY * colorFrame.width * 3) + (colorSourceX * 3);
       const outputIndex = outputRowOffset + (outputX * 4);
 
@@ -99,7 +122,7 @@ function processFrame(frame, options = {}) {
       const depthValue = depthData[depthIndex];
       let pixelValue = 0;
 
-      if (depthValue > 0 && depthValue <= config.depthThreshold) {
+      if (depthValue > 0 && depthValue <= config.depthThreshold && validColorCoords) {
         // Default to white if within depth threshold
         pixelValue = 255;
 
@@ -115,7 +138,7 @@ function processFrame(frame, options = {}) {
       outputBuffer[outputIndex] = pixelValue;     // R
       outputBuffer[outputIndex + 1] = pixelValue; // G
       outputBuffer[outputIndex + 2] = pixelValue; // B
-      outputBuffer[outputIndex + 3] = 255;       // A
+      outputBuffer[outputIndex + 3] = 255;        // A
     }
   }
 
